@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#16a34a">
+  <title>SitoShopping</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Roboto, sans-serif;
+      background: #f3f4f6;
+      color: #111827;
+    }
+    header {
+      background: #16a34a;
+      color: white;
+      padding: 18px 16px;
+      font-size: 22px;
+      font-weight: 700;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    form {
+      display: flex;
+      gap: 8px;
+      padding: 12px 16px;
+      background: white;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    input[type="text"] {
+      flex: 1;
+      font-size: 17px;
+      padding: 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      outline: none;
+    }
+    input[type="text"]:focus { border-color: #16a34a; }
+    button.add {
+      font-size: 24px;
+      width: 52px;
+      border: none;
+      border-radius: 10px;
+      background: #16a34a;
+      color: white;
+    }
+    ul { list-style: none; margin: 0; padding: 8px 16px 100px; }
+    li {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: white;
+      margin: 8px 0;
+      padding: 12px;
+      border-radius: 12px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+    }
+    .check {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 2px solid #9ca3af;
+      background: white;
+      color: white;
+      font-size: 18px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    li.done .check { background: #16a34a; border-color: #16a34a; }
+    .name { flex: 1; font-size: 17px; word-break: break-word; }
+    li.done .name { text-decoration: line-through; color: #9ca3af; }
+    .delete {
+      border: none;
+      background: none;
+      color: #ef4444;
+      font-size: 22px;
+      padding: 0 4px;
+    }
+    .empty { text-align: center; color: #6b7280; margin-top: 40px; }
+    .clear {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      border: none;
+      border-radius: 999px;
+      background: #111827;
+      color: white;
+      padding: 12px 20px;
+      font-size: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+  </style>
+</head>
+<body>
+  <header>🛒 SitoShopping</header>
+  <form id="form">
+    <input id="input" type="text" placeholder="Añadir producto..." autocomplete="off">
+    <button class="add" type="submit">+</button>
+  </form>
+  <ul id="list"></ul>
+  <button id="clear" class="clear" hidden>Borrar comprados</button>
+
+  <script>
+    const STORAGE_KEY = 'sitoshopping-items';
+    let items = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+    const form = document.getElementById('form');
+    const input = document.getElementById('input');
+    const list = document.getElementById('list');
+    const clearBtn = document.getElementById('clear');
+
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    }
+
+    function render() {
+      list.innerHTML = '';
+      if (items.length === 0) {
+        list.innerHTML = '<p class="empty">La lista está vacía</p>';
+      }
+      const sorted = [...items].sort((a, b) => a.done - b.done);
+      for (const item of sorted) {
+        const li = document.createElement('li');
+        if (item.done) li.classList.add('done');
+
+        const check = document.createElement('button');
+        check.className = 'check';
+        check.textContent = item.done ? '✓' : '';
+        check.onclick = () => toggle(item.id);
+
+        const name = document.createElement('span');
+        name.className = 'name';
+        name.textContent = item.name;
+        name.onclick = () => toggle(item.id);
+
+        const del = document.createElement('button');
+        del.className = 'delete';
+        del.textContent = '✕';
+        del.onclick = () => remove(item.id);
+
+        li.append(check, name, del);
+        list.appendChild(li);
+      }
+      clearBtn.hidden = !items.some(i => i.done);
+    }
+
+    function toggle(id) {
+      const item = items.find(i => i.id === id);
+      item.done = !item.done;
+      save();
+      render();
+    }
+
+    function remove(id) {
+      items = items.filter(i => i.id !== id);
+      save();
+      render();
+    }
+
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      const name = input.value.trim();
+      if (!name) return;
+      items.push({ id: Date.now(), name, done: false });
+      input.value = '';
+      save();
+      render();
+    };
+
+    clearBtn.onclick = () => {
+      items = items.filter(i => !i.done);
+      save();
+      render();
+    };
+
+    render();
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
+  </script>
+</body>
+</html>
